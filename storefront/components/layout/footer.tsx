@@ -1,18 +1,21 @@
 'use client'
 
 import Link from 'next/link'
+import { Heart, MessageCircle, PlayCircle } from 'lucide-react'
 import { clearConsent } from '@/lib/cookie-consent'
 import { usePolicies } from '@/hooks/use-policies'
 
 const footerLinks = {
   shop: [
-    { label: 'All Products', href: '/products' },
+    { label: 'All Shoes', href: '/products' },
     { label: 'New Arrivals', href: '/products?sort=newest' },
     { label: 'Collections', href: '/collections' },
+    { label: 'Sale', href: '/products?sort=price_asc' },
   ],
   help: [
-    { label: 'FAQ', href: '/faq' },
+    { label: 'Size Guide', href: '/faq' },
     { label: 'Shipping & Returns', href: '/shipping' },
+    { label: 'FAQ', href: '/faq' },
     { label: 'Contact Us', href: '/contact' },
   ],
 }
@@ -20,12 +23,10 @@ const footerLinks = {
 export default function Footer() {
   const { policies } = usePolicies()
 
-  // Build company links dynamically based on available policies
-  const companyLinks = [
-    { label: 'About', href: '/about' },
+  const companyLinks: { label: string; href: string }[] = [
+    { label: 'About Stride', href: '/about' },
   ]
 
-  // Add policy links only if they're set in the admin
   if (policies?.privacy_policy) {
     companyLinks.push({ label: 'Privacy Policy', href: '/privacy' })
   }
@@ -40,29 +41,41 @@ export default function Footer() {
   }
 
   return (
-    <footer className="border-t bg-muted/30">
-      <div className="container-custom py-section-sm">
-        {/* Main Footer */}
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
+    <footer className="bg-foreground text-background">
+      {/* Top section */}
+      <div className="container-custom py-16">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-5">
           {/* Brand */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-2">
             <Link href="/" className="inline-block">
-              <span className="font-heading text-2xl font-semibold">
-                Store
+              <span className="font-heading text-4xl tracking-widest text-white uppercase">
+                Stride
               </span>
             </Link>
-            <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Curated products crafted with care. Quality you can feel, design you can see.
+            <p className="mt-4 text-sm text-white/60 leading-relaxed max-w-xs">
+              Premium footwear engineered for performance, designed for the streets. Every step, elevated.
             </p>
+            {/* Social Icons */}
+            <div className="mt-6 flex items-center gap-4">
+              <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors" aria-label="Social">
+                <Heart className="h-4 w-4 text-white" />
+              </a>
+              <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors" aria-label="Community">
+                <MessageCircle className="h-4 w-4 text-white" />
+              </a>
+              <a href="#" className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors" aria-label="Videos">
+                <PlayCircle className="h-4 w-4 text-white" />
+              </a>
+            </div>
           </div>
 
           {/* Shop Links */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest mb-4">Shop</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest mb-5 text-white/40">Shop</h3>
             <ul className="space-y-3">
               {footerLinks.shop.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -72,11 +85,11 @@ export default function Footer() {
 
           {/* Help Links */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest mb-4">Help</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest mb-5 text-white/40">Support</h3>
             <ul className="space-y-3">
               {footerLinks.help.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -86,11 +99,11 @@ export default function Footer() {
 
           {/* Company Links */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest mb-4">Company</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest mb-5 text-white/40">Company</h3>
             <ul className="space-y-3">
               {companyLinks.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-white/70 hover:text-white transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -98,11 +111,13 @@ export default function Footer() {
             </ul>
           </div>
         </div>
+      </div>
 
-        {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Store. All rights reserved.
+      {/* Bottom Bar */}
+      <div className="border-t border-white/10">
+        <div className="container-custom py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-white/40">
+            &copy; {new Date().getFullYear()} Stride Footwear. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
             <button
@@ -110,11 +125,11 @@ export default function Footer() {
                 clearConsent()
                 window.dispatchEvent(new Event('manage-cookies'))
               }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="text-xs text-white/40 hover:text-white/70 transition-colors"
             >
               Manage Cookies
             </button>
-            <span className="text-xs text-muted-foreground">Powered by Amboras</span>
+            <span className="text-xs text-white/30">Powered by Amboras</span>
           </div>
         </div>
       </div>

@@ -1,16 +1,22 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-export const revalidate = 3600 // ISR: revalidate every hour
+export const revalidate = 3600
 import { medusaServerClient } from '@/lib/medusa-client'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Truck, RotateCcw, Shield, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import ProductActions from '@/components/product/product-actions'
 import ProductAccordion from '@/components/product/product-accordion'
+import TrustBadges from '@/components/product/trust-badges'
+import BundleOffer from '@/components/product/bundle-offer'
+import UrgencyBar from '@/components/product/urgency-bar'
 import { ProductViewTracker } from '@/components/product/product-view-tracker'
 import { getProductPlaceholder } from '@/lib/utils/placeholder-images'
 import { type VariantExtension } from '@/components/product/product-price'
+
+// IDs of the bundle product and its variants — used for the bundle upsell
+const BUNDLE_PRODUCT_HANDLE = 'stride-dual-pack-bundle'
 
 async function getProduct(handle: string) {
   try {
@@ -26,6 +32,23 @@ async function getProduct(handle: string) {
     return response.products?.[0] || null
   } catch (error) {
     console.error('Error fetching product:', error)
+    return null
+  }
+}
+
+async function getBundleProduct() {
+  try {
+    const regionsResponse = await medusaServerClient.store.region.list()
+    const regionId = regionsResponse.regions[0]?.id
+    if (!regionId) return null
+
+    const response = await medusaServerClient.store.product.list({
+      handle: BUNDLE_PRODUCT_HANDLE,
+      region_id: regionId,
+      fields: '*variants.calculated_price',
+    })
+    return response.products?.[0] || null
+  } catch {
     return null
   }
 }
@@ -89,7 +112,10 @@ export default async function ProductPage({
   params: Promise<{ handle: string }>
 }) {
   const { handle } = await params
-  const product = await getProduct(handle)
+  const [product, bundleProduct] = await Promise.all([
+    getProduct(handle),
+    getBundleProduct(),
+  ])
 
   if (!product) {
     notFound()
@@ -99,13 +125,27 @@ export default async function ProductPage({
 
   const allImages = [
     ...(product.thumbnail ? [{ url: product.thumbnail }] : []),
-    ...(product.images || []).filter((img: any) => img.url !== product.thumbnail),
+    ...(product.images || []).filter((img: { url: string }) => img.url !== product.thumbnail),
   ]
 
-  // Use placeholder if no images
   const displayImages = allImages.length > 0
     ? allImages
     : [{ url: getProductPlaceholder(product.id) }]
+
+  // Bundle variant: use the first available variant of the bundle
+  const bundleVariant = (bundleProduct?.variants as Array<{ id: string; calculated_price?: { calculated_amount?: number } }> | undefined)?.[0]
+  const bundleVariantId = bundleVariant?.id || ''
+  const bundlePrice = bundleVariant?.calculated_price?.calculated_amount ?? 21800
+  const regularSinglePrice = 25800 // $258 = 2x full price
+  const savings = regularSinglePrice - bundlePrice
+
+  // First variant stock count for urgency
+  const firstVariantId = (product.variants as Array<{ id: string }>)[0]?.id
+  const firstExt = firstVariantId ? variantExtensions[firstVariantId] : null
+  const inventoryForUrgency = firstExt?.inventory_quantity ?? null
+
+  const isBundle = handle === BUNDLE_PRODUCT_HANDLE
+  const showBundleUpsell = !isBundle && !!bundleVariantId
 
   return (
     <>
@@ -122,11 +162,11 @@ export default async function ProductPage({
         </div>
       </div>
 
-      <div className="container-custom py-8 lg:py-12">
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
+      <div className="container-custom py-8 lg:py-14">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-20">
           {/* Product Images */}
           <div className="space-y-3">
-            <div className="relative aspect-[3/4] overflow-hidden bg-muted rounded-sm">
+            <div className="relative aspect-[4/5] overflow-hidden bg-[#f5f4f0]">
               <Image
                 src={displayImages[0].url}
                 alt={product.title}
@@ -139,10 +179,10 @@ export default async function ProductPage({
 
             {displayImages.length > 1 && (
               <div className="grid grid-cols-4 gap-3">
-                {displayImages.slice(1, 5).map((image: any, idx: number) => (
+                {displayImages.slice(1, 5).map((image: { url: string }, idx: number) => (
                   <div
                     key={idx}
-                    className="relative aspect-[3/4] overflow-hidden bg-muted rounded-sm"
+                    className="relative aspect-[4/5] overflow-hidden bg-[#f5f4f0]"
                   >
                     <Image
                       src={image.url}
@@ -159,44 +199,46 @@ export default async function ProductPage({
 
           {/* Product Info */}
           <div className="lg:sticky lg:top-24 lg:self-start space-y-6">
-            {/* Title & Subtitle */}
+            {/* Badge + Title */}
             <div>
               {product.subtitle && (
-                <p className="text-sm uppercase tracking-[0.15em] text-muted-foreground mb-2">
+                <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2 font-semibold">
                   {product.subtitle}
                 </p>
               )}
-              <h1 className="text-h2 font-heading font-semibold">{product.title}</h1>
+              <h1 className="font-heading text-[3rem] sm:text-[3.5rem] leading-none tracking-wider uppercase">
+                {product.title}
+              </h1>
             </div>
 
             <ProductViewTracker
               productId={product.id}
               productTitle={product.title}
-              variantId={product.variants?.[0]?.id || null}
-              currency={product.variants?.[0]?.calculated_price?.currency_code || 'usd'}
-              value={product.variants?.[0]?.calculated_price?.calculated_amount ?? null}
+              variantId={(product.variants as Array<{ id: string }>)[0]?.id || null}
+              currency={(product.variants as Array<{ calculated_price?: { currency_code?: string } }>)[0]?.calculated_price?.currency_code || 'usd'}
+              value={(product.variants as Array<{ calculated_price?: { calculated_amount?: number | null } }>)[0]?.calculated_price?.calculated_amount ?? null}
             />
 
-            {/* Variant Selector + Price + Add to Cart (client component) */}
+            {/* Urgency signals */}
+            <UrgencyBar inventoryCount={inventoryForUrgency} />
+
+            {/* Variant Selector + Price + Add to Cart */}
             <ProductActions product={product} variantExtensions={variantExtensions} />
 
-            {/* Trust Signals */}
-            <div className="grid grid-cols-3 gap-4 py-6 border-t">
-              <div className="text-center">
-                <Truck className="h-5 w-5 mx-auto mb-1.5" strokeWidth={1.5} />
-                <p className="text-xs text-muted-foreground">Free Shipping</p>
-              </div>
-              <div className="text-center">
-                <RotateCcw className="h-5 w-5 mx-auto mb-1.5" strokeWidth={1.5} />
-                <p className="text-xs text-muted-foreground">30-Day Returns</p>
-              </div>
-              <div className="text-center">
-                <Shield className="h-5 w-5 mx-auto mb-1.5" strokeWidth={1.5} />
-                <p className="text-xs text-muted-foreground">Secure Checkout</p>
-              </div>
-            </div>
+            {/* Bundle upsell */}
+            {showBundleUpsell && (
+              <BundleOffer
+                bundleVariantId={bundleVariantId}
+                bundlePrice={bundlePrice}
+                singlePrice={regularSinglePrice}
+                savings={savings}
+              />
+            )}
 
-            {/* Accordion Sections */}
+            {/* Trust Badges */}
+            <TrustBadges />
+
+            {/* Accordion */}
             <ProductAccordion
               description={product.description}
               details={product.metadata as Record<string, string> | undefined}
